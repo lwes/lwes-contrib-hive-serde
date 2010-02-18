@@ -1,0 +1,78 @@
+LWES Journal File SerDe README
+
+*** 
+In order to read journal files from Hive, a SerDe (Serialize/Deserializer) 
+is needed, to map Hive columns to LWES attributes.
+
+***
+Prerequisites
+- JDK 1.6.x (http://java.sun.com/)
+- Maven 2.2.x (http://apache.maven.org/)
+
+***
+How to build
+% mvn clean package
+
+*** 
+How to install
+
+Hive looks for extensions in a directory defined in the environment
+variable HIVE_AUX_JARS_PATH. 
+If that variable is not defined, set it to a directory of your choice
+Copy JournalSerDe-x.x.x.jar into that directory and launch hive
+
+***
+Creating tables
+
+
+This is an example of table creation.  
+Just one event type is currently allowed per table.
+The SerDe will automatically map a lwes attribute to the correspondent
+hive column with the same name. Unfortunately, lwes attributes are case
+sensitive while hive columns are not; you may also want a hive column
+with a different name from the lwes attribute. In either case, you can
+change the attribute/column mapping with serde properties as shown below:
+the column sender_ip is mapped to the lwes attribute 'SenderIP'.
+Classes for input/output are 
+INPUTFORMAT  'org.lwes.hadoop.io.JournalInputFormat'
+OUTPUTFORMAT 'org.lwes.hadoop.io.JournalOutputFormat'
+
+
+CREATE TABLE mrkt_auction_complete_hourly (
+        a_bid string,
+        a_price string,
+        a_act_id bigint,
+	......
+        x_revenue string
+ )
+PARTITIONED BY(dt STRING)
+ ROW FORMAT SERDE 'org.lwes.hadoop.hive.EventSerDe'
+WITH SERDEPROPERTIES (
+        'lwes.event_name'='Auction::Complete',
+        'sender_ip'='SenderIP',
+        'sender_port'='SenderPort',
+        'receipt_time'='ReceiptTime',
+        'site_id'='SiteID')
+ STORED AS
+        INPUTFORMAT  'org.lwes.hadoop.io.JournalInputFormat'
+        OUTPUTFORMAT 'org.lwes.hadoop.io.JournalOutputFormat'
+ ;
+
+
+Also, lwes does not support FLOAT nor DOUBLE but hive does.
+You can have define those columns as float/double and the serde
+will convert its values according to Float.parseFloat(String) and
+Double.parseDouble(String).
+
+I also built a tool to create table definitions from the ESF file
+and will post it too to sourceforge.
+
+*** 
+Limitations
+
+Since LWES is basically a key/value format, it does not support nested 
+columns so arrays and hashes are for now not allowed in a hive table that
+uses this SerDe
+
+
+
